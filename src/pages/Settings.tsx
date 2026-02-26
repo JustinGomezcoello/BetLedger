@@ -12,6 +12,7 @@ export const Settings = () => {
         stake10_percent: '0.05',
         use_compounding: true
     });
+    const [channels, setChannels] = useState<any[]>([]);
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -30,6 +31,10 @@ export const Settings = () => {
                         use_compounding: data.use_compounding
                     });
                 }
+                const { data: cbData } = await supabase.from('channel_bankrolls').select('*').order('channel_name');
+                if (cbData) {
+                    setChannels(cbData);
+                }
             } catch (e) {
                 console.error("Error fetching profile:", e);
             } finally {
@@ -38,6 +43,11 @@ export const Settings = () => {
         };
         fetchProfile();
     }, []);
+
+    const handleChannelChange = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+        const { name, value } = e.target;
+        setChannels(channels.map(ch => ch.id === id ? { ...ch, [name]: value } : ch));
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -63,6 +73,17 @@ export const Settings = () => {
                 .eq('id', profile.id);
 
             if (error) throw error;
+
+            for (const ch of channels) {
+                const { error: chError } = await supabase
+                    .from('channel_bankrolls')
+                    .update({
+                        starting_bankroll: parseFloat(ch.starting_bankroll),
+                        current_bankroll: parseFloat(ch.current_bankroll)
+                    })
+                    .eq('id', ch.id);
+                if (chError) throw chError;
+            }
 
             setMessage({ type: 'success', text: t('settings.success') });
         } catch (err: any) {
@@ -171,6 +192,43 @@ export const Settings = () => {
                             </label>
                         </div>
                     </div>
+
+                    {channels.length > 0 && (
+                        <div className="mt-8 pt-8 border-t border-slate-700/50 space-y-6">
+                            <h3 className="text-lg font-bold text-white mb-4">Capital por Canales (Tipsters)</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {channels.map(ch => (
+                                    <div key={ch.id} className="bg-slate-800/30 p-5 rounded-xl border border-slate-700/50 space-y-4">
+                                        <h4 className="font-semibold text-blue-400">{ch.channel_name}</h4>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-medium text-slate-400">Bank Inicial (Ideal para nuevo mes)</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                name="starting_bankroll"
+                                                value={ch.starting_bankroll}
+                                                onChange={(e) => handleChannelChange(e, ch.id)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-medium text-slate-400">Bank Actual</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                name="current_bankroll"
+                                                value={ch.current_bankroll}
+                                                onChange={(e) => handleChannelChange(e, ch.id)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="pt-6 flex justify-end">
                         <button

@@ -25,16 +25,22 @@ export const NewBet = () => {
 
     const [tipsterScale, setTipsterScale] = useState('10');
     const [tipsterStakeInput, setTipsterStakeInput] = useState('');
+    const [isTracking, setIsTracking] = useState(false);
 
     const [userProfile, setUserProfile] = useState<any>(null);
+    const [channelProfiles, setChannelProfiles] = useState<any[]>([]);
 
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
-            const { data } = await supabase.from('bankroll_profiles').select('current_bankroll, stake10_percent').limit(1).single();
+            const { data } = await supabase.from('bankroll_profiles').select('id, starting_bankroll, current_bankroll, stake10_percent').limit(1).single();
             if (data) {
                 setUserProfile(data);
+            }
+            const { data: cbData } = await supabase.from('channel_bankrolls').select('*');
+            if (cbData) {
+                setChannelProfiles(cbData);
             }
         };
         fetchProfile();
@@ -43,14 +49,40 @@ export const NewBet = () => {
     const [error, setError] = useState('');
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+
+        // Auto-adjust scale based on channel
+        if (name === 'channel') {
+            if (value === 'Sport Apuestas Premium') {
+                setTipsterScale('');
+                setTipsterStakeInput('');
+                setFormData(prev => ({ ...prev, channel: value, tipster_amount: '', stake_norm: '11' }));
+            } else {
+                setTipsterScale('10');
+                setFormData(prev => ({
+                    ...prev,
+                    channel: value,
+                    stake_norm: parseInt(prev.stake_norm) > 10 ? '5' : prev.stake_norm
+                }));
+            }
+            return;
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.selection || !formData.odds || !formData.tipster_amount || !tipsterStakeInput || !tipsterScale) {
-            setError('Por favor, completa todos los campos requeridos (incluyendo Inversión del Tipster).');
+        // Tipster Amount is only logically required for Standard 'Sport Apuestas' as Premium often omits it.
+        const isPremium = formData.channel === 'Sport Apuestas Premium';
+
+        if (!formData.selection || !formData.odds) {
+            setError('Por favor, completa los campos base (selección, cuota).');
+            return;
+        }
+
+        if (!isPremium && (!formData.tipster_amount || !tipsterStakeInput || !tipsterScale)) {
+            setError('Para el canal Sport Apuestas normal, debes llenar el monto, stake y escala del Tipster.');
             return;
         }
 
@@ -68,15 +100,34 @@ export const NewBet = () => {
             // Get active bankroll profile to calculate actual stake amount
             const { data: profileData, error: profileError } = await supabase
                 .from('bankroll_profiles')
-                .select('id, current_bankroll, stake10_percent')
+                .select('id, starting_bankroll, current_bankroll, stake10_percent')
                 .limit(1)
                 .single();
 
             if (profileError) throw profileError;
 
+            // Fetch channel bankroll
+            const { data: cbData } = await supabase
+                .from('channel_bankrolls')
+                .select('starting_bankroll')
+                .eq('profile_id', profileData.id)
+                .eq('channel_name', formData.channel)
+                .single();
+
+            const activeBankroll = cbData ? cbData.starting_bankroll : profileData.starting_bankroll;
+            const maxStakeScale = formData.channel === 'Sport Apuestas Premium' ? 11 : 10;
+
             // Calculate the specific amount for this stake
-            const maxStakeAmount = profileData.current_bankroll * profileData.stake10_percent;
-            const amount = (parseInt(formData.stake_norm) / 10) * maxStakeAmount;
+            let maxStakeAmount = activeBankroll * profileData.stake10_percent;
+            let amount = (parseInt(formData.stake_norm) / maxStakeScale) * maxStakeAmount;
+
+            let finalStakeNorm = parseInt(formData.stake_norm);
+
+            // If tracking mode, user invests 0
+            if (isTracking) {
+                amount = 0;
+                finalStakeNorm = 0;
+            }
 
             // Calculate Tipster Data
             const tAmount = parseFloat(formData.tipster_amount) || 0;
@@ -103,7 +154,7 @@ export const NewBet = () => {
                     selection: finalSelection,
                     description: finalDescription,
                     odds: finalOdds,
-                    stake_norm: parseInt(formData.stake_norm),
+                    stake_norm: finalStakeNorm,
                     stake_amount: amount,
                     status: 'pending',
                     channel: formData.channel,
@@ -122,6 +173,7 @@ export const NewBet = () => {
                 tipster_amount: ''
             });
             setTipsterStakeInput('');
+            setIsTracking(false);
             setLeg2({
                 selection: '',
                 description: ''
@@ -215,67 +267,92 @@ export const NewBet = () => {
                                 </select>
                             </div>
 
+                            <div className="space-y-4 md:col-span-2 mt-4 pt-4 border-t border-slate-700/50">
+                                <label className="flex items-center gap-3 bg-blue-500/10 p-4 rounded-xl border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={isTracking}
+                                        onChange={(e) => setIsTracking(e.target.checked)}
+                                        className="w-5 h-5 rounded border-slate-600 text-blue-500 focus:ring-blue-500 bg-slate-800"
+                                    />
+                                    <div>
+                                        <p className="font-bold text-blue-400">Modo Tracking (No aposté dinero real)</p>
+                                        <p className="text-xs text-blue-300/70">Ideal para registrar apuestas pasadas del tipster sin afectar tu bankroll personal.</p>
+                                    </div>
+                                </label>
+                            </div>
+
                             <div className="space-y-2 md:col-span-2 mt-4 pt-4 border-t border-slate-700/50">
                                 <h3 className="text-lg font-bold text-blue-400 mb-2">💰 Inversión del Tipster</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-300">Monto del Tipster (€/$)</label>
-                                        <input
-                                            type="number"
-                                            name="tipster_amount"
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.tipster_amount}
-                                            onChange={handleChange}
-                                            placeholder="Ej. 1000"
-                                            className="w-full bg-slate-900 border border-emerald-500/30 rounded-xl px-4 py-3 text-emerald-300 font-mono text-lg focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-all"
-                                        />
-                                    </div>
+                                {formData.channel === 'Sport Apuestas' ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-slate-300">
+                                                Monto del Tipster (€/$)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="tipster_amount"
+                                                min="0"
+                                                step="0.01"
+                                                value={formData.tipster_amount}
+                                                onChange={handleChange}
+                                                placeholder="Ej. 1000"
+                                                className="w-full bg-slate-900 border border-emerald-500/30 rounded-xl px-4 py-3 text-emerald-300 font-mono text-lg focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-all"
+                                            />
+                                        </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-300">Stake del Tipster</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            value={tipsterStakeInput}
-                                            onChange={(e) => {
-                                                setTipsterStakeInput(e.target.value);
-                                                const val = parseFloat(e.target.value);
-                                                const scale = parseFloat(tipsterScale);
-                                                if (!isNaN(val) && !isNaN(scale) && scale > 0) {
-                                                    let suggested = Math.round((val / scale) * 10);
-                                                    if (suggested < 1) suggested = 1;
-                                                    if (suggested > 10) suggested = 10;
-                                                    setFormData({ ...formData, stake_norm: suggested.toString() });
-                                                }
-                                            }}
-                                            placeholder="Ej. 10"
-                                            className="w-full bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-3 text-blue-300 font-mono text-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
-                                        />
-                                    </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-slate-300">Stake del Tipster</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={tipsterStakeInput}
+                                                onChange={(e) => {
+                                                    setTipsterStakeInput(e.target.value);
+                                                    const val = parseFloat(e.target.value);
+                                                    const scale = parseFloat(tipsterScale);
+                                                    if (!isNaN(val) && !isNaN(scale) && scale > 0) {
+                                                        let suggested = Math.round((val / scale) * 10);
+                                                        if (suggested < 1) suggested = 1;
+                                                        if (suggested > 10) suggested = 10;
+                                                        setFormData({ ...formData, stake_norm: suggested.toString() });
+                                                    }
+                                                }}
+                                                placeholder="Ej. 10"
+                                                className="w-full bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-3 text-blue-300 font-mono text-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
+                                            />
+                                        </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-300">Escala de su Stake</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            value={tipsterScale}
-                                            onChange={(e) => {
-                                                setTipsterScale(e.target.value);
-                                                const val = parseFloat(tipsterStakeInput);
-                                                const scale = parseFloat(e.target.value);
-                                                if (!isNaN(val) && !isNaN(scale) && scale > 0) {
-                                                    let suggested = Math.round((val / scale) * 10);
-                                                    if (suggested < 1) suggested = 1;
-                                                    if (suggested > 10) suggested = 10;
-                                                    setFormData({ ...formData, stake_norm: suggested.toString() });
-                                                }
-                                            }}
-                                            placeholder="Ej. 10 o 100"
-                                            className="w-full bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-3 text-blue-300 font-mono text-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
-                                        />
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-slate-300">Escala de su Stake</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={tipsterScale}
+                                                onChange={(e) => {
+                                                    setTipsterScale(e.target.value);
+                                                    const val = parseFloat(tipsterStakeInput);
+                                                    const scale = parseFloat(e.target.value);
+                                                    if (!isNaN(val) && !isNaN(scale) && scale > 0) {
+                                                        let suggested = Math.round((val / scale) * 10);
+                                                        if (suggested < 1) suggested = 1;
+                                                        if (suggested > 10) suggested = 10;
+                                                        setFormData({ ...formData, stake_norm: suggested.toString() });
+                                                    }
+                                                }}
+                                                placeholder="Ej. 10 o 100"
+                                                className="w-full bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-3 text-blue-300 font-mono text-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl">
+                                        <p className="text-blue-300 text-sm">
+                                            El canal <strong>Premium</strong> no suele enviar su inversión real ni stake. Tú asignarás tu stake directamente en la sección de "Mi Gestión Personal" (Automáticamente asignado a <strong>Stake 11</strong> para maximizar ganancias).
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-4 md:col-span-2 mt-4">
@@ -310,7 +387,10 @@ export const NewBet = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-300">{formData.bet_type === 'double' ? 'Cuota (Total Final de la Apuesta Doble)' : t('newBet.odds')}</label>
+                                        <label className="text-sm font-medium text-slate-300">
+                                            {formData.bet_type === 'double' ? 'Cuota (Total Final de la Apuesta Doble)' : t('newBet.odds')}
+                                            {formData.channel === 'Sport Apuestas Premium' && <span className="text-slate-500 text-xs block mt-1">(Premium a veces no envía cuota, búscala manualmente)</span>}
+                                        </label>
                                         <input
                                             type="number"
                                             name="odds"
@@ -386,23 +466,24 @@ export const NewBet = () => {
                         </h3>
                         <p className="text-sm text-slate-400 mb-6 border-b border-slate-700/50 pb-4 relative z-10">
                             Aislando el tamaño del tipster a tu capital real.
+                            <br /><span className="text-xs text-emerald-400/80 mt-1 inline-block">💡 <b>Recomendación:</b> Calcula este monto sobre tu Bank Inicial mensual (fixed staking), no sobre el bank diario, para no castigar tus rachas.</span>
                         </p>
 
-                        <div className="space-y-6 relative z-10">
+                        <div className={`space-y-6 relative z-10 ${isTracking ? 'opacity-50 pointer-events-none' : ''}`}>
                             {/* Visual Slider Auto-Updated */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-300">Tu Stake Asignado</label>
                                 <input
                                     type="range"
                                     name="stake_norm"
-                                    min="1" max="10"
+                                    min="1" max={formData.channel === 'Sport Apuestas Premium' ? "11" : "10"}
                                     value={formData.stake_norm}
                                     onChange={handleChange}
                                     className="w-full h-2 bg-slate-800 border border-slate-700 rounded-lg appearance-none cursor-pointer mt-4
                                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-emerald-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(16,185,129,0.8)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-110
                                            [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:shadow-[0_0_15px_rgba(16,185,129,0.8)] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:hover:scale-110"
                                 />
-                                <div className="text-center text-emerald-400 font-bold text-lg mt-2">{formData.stake_norm} / 10</div>
+                                <div className="text-center text-emerald-400 font-bold text-lg mt-2">{formData.stake_norm} / {formData.channel === 'Sport Apuestas Premium' ? '11' : '10'}</div>
                             </div>
 
                             {userProfile && (
@@ -410,7 +491,10 @@ export const NewBet = () => {
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-slate-400">💵 Inversión Real (Tuya):</span>
                                         <span className="text-white font-bold font-mono text-lg">
-                                            ${(((parseFloat(formData.stake_norm) / 10) * (userProfile.current_bankroll * userProfile.stake10_percent))).toFixed(2)}
+                                            ${(
+                                                (parseFloat(formData.stake_norm) / (formData.channel === 'Sport Apuestas Premium' ? 11 : 10)) *
+                                                ((channelProfiles.find(cp => cp.channel_name === formData.channel)?.starting_bankroll || userProfile.starting_bankroll) * userProfile.stake10_percent)
+                                            ).toFixed(2)}
                                         </span>
                                     </div>
 
@@ -418,7 +502,12 @@ export const NewBet = () => {
                                         <div className="flex justify-between items-center text-sm border-t border-slate-700/50 pt-4">
                                             <span className="text-slate-400">✅ Tu Ganancia Estimada:</span>
                                             <span className="text-emerald-400 font-bold font-mono text-2xl">
-                                                +${((((parseFloat(formData.stake_norm) / 10) * (userProfile.current_bankroll * userProfile.stake10_percent))) * parseFloat(formData.odds) - (((parseFloat(formData.stake_norm) / 10) * (userProfile.current_bankroll * userProfile.stake10_percent)))).toFixed(2)}
+                                                +${(
+                                                    ((parseFloat(formData.stake_norm) / (formData.channel === 'Sport Apuestas Premium' ? 11 : 10)) *
+                                                        ((channelProfiles.find(cp => cp.channel_name === formData.channel)?.starting_bankroll || userProfile.starting_bankroll) * userProfile.stake10_percent)) * parseFloat(formData.odds) -
+                                                    ((parseFloat(formData.stake_norm) / (formData.channel === 'Sport Apuestas Premium' ? 11 : 10)) *
+                                                        ((channelProfiles.find(cp => cp.channel_name === formData.channel)?.starting_bankroll || userProfile.starting_bankroll) * userProfile.stake10_percent))
+                                                ).toFixed(2)}
                                             </span>
                                         </div>
                                     )}

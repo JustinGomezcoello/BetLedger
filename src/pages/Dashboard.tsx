@@ -31,13 +31,18 @@ export const Dashboard = () => {
     const [bets, setBets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedChannel, setSelectedChannel] = useState<string>('All');
+    const [channelProfiles, setChannelProfiles] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch Bankroll Profile
+                // Fetch Bankroll Profile (Global fallback)
                 const { data: bData } = await supabase.from('bankroll_profiles').select('*').limit(1).single();
                 if (bData) setProfile(bData);
+
+                // Fetch Channel Bankrolls
+                const { data: cbData } = await supabase.from('channel_bankrolls').select('*');
+                if (cbData) setChannelProfiles(cbData);
 
                 // Fetch Bets
                 const { data: betsData } = await supabase.from('manual_bets').select('*').order('bet_date', { ascending: false });
@@ -58,6 +63,9 @@ export const Dashboard = () => {
                 fetchData();
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'bankroll_profiles' }, () => {
+                fetchData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_bankrolls' }, () => {
                 fetchData();
             })
             .subscribe();
@@ -88,8 +96,23 @@ export const Dashboard = () => {
     const channelTotal = channelWon + channelLost;
     const channelWinRate = channelTotal > 0 ? ((channelWon / channelTotal) * 100).toFixed(1) : '0.0';
 
-    const startCapital = profile?.starting_bankroll || 100;
-    const currentBankroll = profile?.current_bankroll || 100;
+    // Determine Bankrolls based on selection
+    const activeChannelProfile = channelProfiles.find(cp => cp.channel_name === selectedChannel);
+
+    // Global combines all channels if they exist, else fallbacks to global profile
+    const globalStartBankroll = channelProfiles.length > 0
+        ? channelProfiles.reduce((acc, cp) => acc + Number(cp.starting_bankroll), 0)
+        : (profile?.starting_bankroll || 100);
+
+    const globalCurrentBankroll = channelProfiles.length > 0
+        ? channelProfiles.reduce((acc, cp) => acc + Number(cp.current_bankroll), 0)
+        : (profile?.current_bankroll || 100);
+
+    const channelStartBankroll = activeChannelProfile ? Number(activeChannelProfile.starting_bankroll) : (profile?.starting_bankroll || 100);
+    const channelCurrentBankroll = activeChannelProfile ? Number(activeChannelProfile.current_bankroll) : (profile?.current_bankroll || 100);
+
+    const startCapital = selectedChannel === 'All' ? globalStartBankroll : channelStartBankroll;
+    const currentBankrollDisplay = selectedChannel === 'All' ? globalCurrentBankroll : channelCurrentBankroll;
 
     // Growth Data for Chart
     let runningBank = startCapital;
@@ -106,7 +129,7 @@ export const Dashboard = () => {
 
     // Inject initial point
     if (chartData.length > 0) {
-        chartData.unshift({ date: t('dashboard.start'), bankroll: startCapital, profit: 0 });
+        chartData.unshift({ date: t('dashboard.start', 'Inicio'), bankroll: startCapital, profit: 0 });
     }
 
     return (
@@ -132,7 +155,7 @@ export const Dashboard = () => {
                     <StatCard
                         title={t('dashboard.currentBankroll', 'Mis Ganancias (Bank)')}
                         value={`$${globalProfit >= 0 ? '+' : ''}${globalProfit.toFixed(2)}`}
-                        subValue={`Total Bank: $${currentBankroll.toFixed(2)}`}
+                        subValue={`Total Bank: $${currentBankrollDisplay.toFixed(2)}`}
                         trend={globalProfit >= 0 ? "up" : "down"}
                         icon={Wallet}
                     />
@@ -186,7 +209,7 @@ export const Dashboard = () => {
                         <StatCard
                             title={`Mis Ganancias (${selectedChannel})`}
                             value={`$${channelMyProfit >= 0 ? '+' : ''}${channelMyProfit.toFixed(2)}`}
-                            subValue="Dinero generado en mi Bank"
+                            subValue={`Bank Canal: $${currentBankrollDisplay.toFixed(2)}`}
                             trend={channelMyProfit >= 0 ? "up" : "down"}
                             icon={Wallet}
                         />

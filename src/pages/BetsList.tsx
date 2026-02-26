@@ -55,13 +55,22 @@ export const BetsList = () => {
 
             if (updateError) throw updateError;
 
-            // 3. Update Bankroll Profile
+            // 3. Update Bankroll Profile (Global)
             // Fetch current bankroll
             const { data: profile } = await supabase.from('bankroll_profiles').select('id, current_bankroll').eq('id', bet.profile_id).single();
 
             if (profile) {
-                const newBankroll = profile.current_bankroll + profit;
+                const newBankroll = Number(profile.current_bankroll) + profit;
                 await supabase.from('bankroll_profiles').update({ current_bankroll: newBankroll }).eq('id', profile.id);
+            }
+
+            // 4. Update Channel Bankroll
+            const channelName = bet.channel || 'Personal';
+            const { data: channelProfile } = await supabase.from('channel_bankrolls').select('id, current_bankroll').eq('profile_id', bet.profile_id).eq('channel_name', channelName).single();
+
+            if (channelProfile) {
+                const newChannelBankroll = Number(channelProfile.current_bankroll) + profit;
+                await supabase.from('channel_bankrolls').update({ current_bankroll: newChannelBankroll }).eq('id', channelProfile.id);
             }
 
             // Refresh list
