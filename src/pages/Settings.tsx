@@ -14,6 +14,10 @@ export const Settings = () => {
     });
     const [channels, setChannels] = useState<any[]>([]);
 
+    const [monthlyConfigs, setMonthlyConfigs] = useState<any[]>([]);
+    const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+    const [monthBankroll, setMonthBankroll] = useState<string>('');
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -35,6 +39,15 @@ export const Settings = () => {
                 if (cbData) {
                     setChannels(cbData);
                 }
+                
+                const { data: mcData } = await supabase.from('monthly_configs').select('*').order('month', { ascending: false });
+                if (mcData) {
+                    setMonthlyConfigs(mcData);
+                    const currentMonthData = mcData.find(m => m.month === new Date().toISOString().slice(0, 7));
+                    if (currentMonthData) {
+                        setMonthBankroll(currentMonthData.starting_bankroll.toString());
+                    }
+                }
             } catch (e) {
                 console.error("Error fetching profile:", e);
             } finally {
@@ -43,6 +56,15 @@ export const Settings = () => {
         };
         fetchProfile();
     }, []);
+
+    useEffect(() => {
+        const config = monthlyConfigs.find(m => m.month === selectedMonth);
+        if (config) {
+            setMonthBankroll(config.starting_bankroll.toString());
+        } else {
+            setMonthBankroll('');
+        }
+    }, [selectedMonth, monthlyConfigs]);
 
     const handleChannelChange = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
         const { name, value } = e.target;
@@ -83,6 +105,17 @@ export const Settings = () => {
                     })
                     .eq('id', ch.id);
                 if (chError) throw chError;
+            }
+
+            if (selectedMonth && monthBankroll) {
+                const { error: mcError } = await supabase
+                    .from('monthly_configs')
+                    .upsert({
+                        profile_id: profile.id,
+                        month: selectedMonth,
+                        starting_bankroll: parseFloat(monthBankroll)
+                    }, { onConflict: 'month,profile_id' });
+                if (mcError) throw mcError;
             }
 
             setMessage({ type: 'success', text: t('settings.success') });
@@ -195,7 +228,33 @@ export const Settings = () => {
 
                     {channels.length > 0 && (
                         <div className="mt-8 pt-8 border-t border-slate-700/50 space-y-6">
-                            <h3 className="text-lg font-bold text-white mb-4">Capital por Canales (Tipsters)</h3>
+                            <h3 className="text-lg font-bold text-white mb-4">Configuración Mensual (Mi Capital)</h3>
+                            <div className="bg-slate-800/30 p-5 rounded-xl border border-slate-700/50 space-y-4 max-w-md mb-8">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-slate-400">Mes a configurar</label>
+                                    <input
+                                        type="month"
+                                        value={selectedMonth}
+                                        onChange={(e) => setSelectedMonth(e.target.value)}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-slate-400">Capital Inicial del Mes</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Ej: 500.00"
+                                        value={monthBankroll}
+                                        onChange={(e) => setMonthBankroll(e.target.value)}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                                    />
+                                    <p className="text-xs text-slate-500">Este valor se usará en el Dashboard para calcular tu rendimiento exacto de este mes.</p>
+                                </div>
+                            </div>
+                            
+                            <h3 className="text-lg font-bold text-white mb-4 mt-8 pt-6 border-t border-slate-700/50">Capital por Canales (Tipsters)</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {channels.map(ch => (
                                     <div key={ch.id} className="bg-slate-800/30 p-5 rounded-xl border border-slate-700/50 space-y-4">
@@ -229,6 +288,70 @@ export const Settings = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Betting Account Credentials */}
+                    <div className="mt-8 pt-8 border-t border-slate-700/50 space-y-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <h3 className="text-lg font-bold text-white">Credenciales de Casas de Apuestas</h3>
+                            <span className="bg-slate-800 text-xs text-slate-400 px-2 py-1 rounded-md border border-slate-700">Privado</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-slate-800/30 p-5 rounded-xl border border-slate-700/50 space-y-4 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-bl-full -z-10"></div>
+                                <h4 className="font-semibold text-blue-400 flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                    1xbet
+                                </h4>
+
+                                <div className="space-y-3">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-medium text-slate-400">URL</label>
+                                        <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg overflow-hidden group">
+                                            <input type="text" readOnly value="1xbet.com" className="w-full bg-transparent px-3 py-2 text-white/90 text-sm focus:outline-none" />
+                                            <button
+                                                type="button"
+                                                onClick={() => { navigator.clipboard.writeText('1xbet.com'); alert('URL copiada'); }}
+                                                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border-l border-slate-700"
+                                                title="Copiar URL"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-medium text-slate-400">Username / ID</label>
+                                        <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg overflow-hidden group">
+                                            <input type="text" readOnly value="1545787019" className="w-full bg-transparent px-3 py-2 text-white/90 font-mono text-sm focus:outline-none" />
+                                            <button
+                                                type="button"
+                                                onClick={() => { navigator.clipboard.writeText('1545787019'); alert('Username copiado'); }}
+                                                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border-l border-slate-700"
+                                                title="Copiar Username"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-medium text-slate-400">Password</label>
+                                        <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg overflow-hidden group">
+                                            <input type="text" readOnly value="Favorite4Sank8Fame(" className="w-full bg-transparent px-3 py-2 text-white/90 font-mono text-sm focus:outline-none" />
+                                            <button
+                                                type="button"
+                                                onClick={() => { navigator.clipboard.writeText('Favorite4Sank8Fame('); alert('Password copiado'); }}
+                                                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border-l border-slate-700"
+                                                title="Copiar Password"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="pt-6 flex justify-end">
                         <button

@@ -139,10 +139,21 @@ export const BetsList = () => {
                                         @{bet.odds}
                                     </td>
                                     <td className="p-4 whitespace-nowrap">
-                                        <div className="font-medium text-white">${bet.stake_amount?.toFixed(2)}</div>
-                                        <div className="text-xs text-slate-500">{bet.stake_norm}/10 {t('betsList.units')}</div>
-                                        {bet.tipster_amount && (
-                                            <div className="text-xs text-blue-400 mt-1" title="Tipster Amount">Tipster: {bet.tipster_amount}</div>
+                                        {bet.stake_amount === 0 ? (
+                                            <>
+                                                <div className="font-bold text-blue-400">Tracking</div>
+                                                {bet.tipster_amount && (
+                                                    <div className="text-xs text-slate-400 mt-1">Tipster: ${Number(bet.tipster_amount).toFixed(2)}</div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="font-medium text-white">${bet.stake_amount?.toFixed(2)}</div>
+                                                <div className="text-xs text-slate-500">{bet.stake_norm}/10 {t('betsList.units')}</div>
+                                                {bet.tipster_amount && (
+                                                    <div className="text-xs text-blue-400 mt-1">Tipster: ${Number(bet.tipster_amount).toFixed(2)}</div>
+                                                )}
+                                            </>
                                         )}
                                     </td>
                                     <td className="p-4 whitespace-nowrap">
@@ -175,10 +186,18 @@ export const BetsList = () => {
                                             </div>
                                         ) : (
                                             <span className="font-bold text-[15px] block">
-                                                {bet.profit >= 0 ? (
-                                                    <span className="text-emerald-400">+${(bet.profit).toFixed(2)}</span>
+                                                {bet.stake_amount === 0 && bet.tipster_profit !== null ? (
+                                                    bet.tipster_profit >= 0 ? (
+                                                        <span className="text-emerald-400">+${Number(bet.tipster_profit).toFixed(2)} <span className="text-[10px] text-slate-500 block">Tipster</span></span>
+                                                    ) : (
+                                                        <span className="text-red-400">-${Math.abs(bet.tipster_profit).toFixed(2)} <span className="text-[10px] text-slate-500 block">Tipster</span></span>
+                                                    )
                                                 ) : (
-                                                    <span className="text-red-400">-${Math.abs(bet.profit).toFixed(2)}</span>
+                                                    bet.profit >= 0 ? (
+                                                        <span className="text-emerald-400">+${Number(bet.profit).toFixed(2)}</span>
+                                                    ) : (
+                                                        <span className="text-red-400">-${Math.abs(bet.profit).toFixed(2)}</span>
+                                                    )
                                                 )}
                                             </span>
                                         )}
