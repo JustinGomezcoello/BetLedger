@@ -470,7 +470,7 @@ export const Dashboard = () => {
                                         formatter={() => <span className="text-blue-400 font-medium">Mi Gestión (Banco Real)</span>}
                                     />
                                     <Tooltip
-                                        content={({ active, payload, label }) => {
+                                        content={({ active, payload }) => {
                                             if (active && payload && payload.length) {
                                                 const data = payload[0].payload;
                                                 if (!data.rawDate) {
@@ -581,7 +581,7 @@ export const Dashboard = () => {
                                             formatter={() => <span className="text-emerald-400 font-medium">Rendimiento Tipster</span>}
                                         />
                                         <Tooltip
-                                            content={({ active, payload, label }) => {
+                                            content={({ active, payload }) => {
                                                 if (active && payload && payload.length) {
                                                     const data = payload[0].payload;
                                                     if (!data.rawDate) {
