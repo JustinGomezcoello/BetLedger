@@ -1,0 +1,424 @@
+double
+date: Jan 1
+categoria: basket
+Selección (Equipos/Partido): Los Angeles Clippers vs Utah Jazz
+Descripción (Logística del Pick): gana Los Angeles Clippers
+Cuota (Odds): 1.20
+Resultado: gano los angeles
+
+categoria: esports
+Selección (Equipos/Partido): LGD Gaming vs JD Gaming
+Descripción (Logística del Pick): gana JD Gaming
+Cuota (Odds): 1.25
+Resultado: gano jd gaming
+
+stake:5
+------------------------------------------
+double
+date: Jan 3
+categoria: futbol
+Selección (Equipos/Partido): Elche vs Villarreal
+Descripción (Logística del Pick): Elche +1.5 (Hándicap asiático)
+Cuota (Odds): 1.25
+Resultado: perdio
+
+categoria: futbol
+Selección (Equipos/Partido): Espanyol vs Barcelona
+Descripción (Logística del Pick): Empate o Barcelona (Doble oportunidad)
+Cuota (Odds): 1.20
+Resultado: gano
+
+stake:5
+------------------------------------------
+single
+date: Jan 3
+categoria: futbol
+Selección (Equipos/Partido): Espanyol vs Barcelona
+Descripción (Logística del Pick): gana Barcelona (Resultado final)
+Cuota (Odds): 1.61
+Resultado:gano
+
+stake:5
+------------------------------------------
+
+double
+date: Jan 4
+categoria: futbol
+Selección (Equipos/Partido): Real Madrid vs Real Betis
+Descripción (Logística del Pick): +- gana Real Madrid
+Cuota (Odds): 1.31
+Resultado:gano
+
+categoria: futbol
+Selección (Equipos/Partido): Real Madrid vs Real Betis
+Descripción (Logística del Pick): Real Madrid más de 1 gol
+Cuota (Odds): 1.31
+Resultado:gano
+
+stake:5
+------------------------------------------
+double
+date: Jan 5
+categoria: futbol
+Selección (Equipos/Partido): Egipto vs Benin
+Descripción (Logística del Pick): Egipto se clasificará
+Cuota (Odds): 1.25
+Resultado:gano
+
+categoria: futbol
+Selección (Equipos/Partido): Nigeria vs Mozambique
+Descripción (Logística del Pick): Nigeria se clasificará
+Cuota (Odds): 1.20
+Resultado:gano
+
+stake:5	
+------------------------------------------
+single
+date: Jan 7
+categoria: futbol
+Selección (Equipos/Partido): Barcelona vs Athletic de Bilbao
+Descripción (Logística del Pick): gana Barcelona (Resultado final)
+Cuota (Odds): 1.57
+Resultado:gano 
+
+stake:5
+------------------------------------------
+double
+date: Jan 8
+categoria: basket
+Selección (Equipos/Partido): Real Madrid vs Maccabi Tel Aviv
+Descripción (Logística del Pick): gana Real Madrid
+Cuota (Odds): 1.28
+Resultado:gano
+
+categoria: futbol
+Selección (Equipos/Partido): PSG vs Marsella
+Descripción (Logística del Pick): PSG ganará el trofeo
+Cuota (Odds): 1.37
+Resultado:gano
+
+stake:5
+------------------------------------------
+single
+date: Jan 9
+categoria: futbol
+Selección (Equipos/Partido): Cádiz vs Sporting de Gijón
+Descripción (Logística del Pick): Cádiz o Empate (Doble oportunidad)
+Cuota (Odds): 1.57
+Resultado:gano
+
+stake:5
+------------------------------------------
+single
+date: Jan 10
+categoria: futbol
+Selección (Equipos/Partido): Francia (VII) vs Polonia (VII)
+Descripción (Logística del Pick): Francia (VII) resultado sin empate
+Cuota (Odds): 1.50
+Resultado:gano
+
+stake:5
+------------------------------------------
+single
+date: Jan 12
+categoria: futbol
+Selección (Equipos/Partido): Sevilla vs Celta de Vigo
+Descripción (Logística del Pick): Más de 1 gol (Total de goles)
+Cuota (Odds): 1.50
+Resultado:perdio
+
+stake:5
+------------------------------------------
+single
+date: Jan 12
+categoria: futbol
+Selección (Equipos/Partido): OG vs FUT
+Descripción (Logística del Pick): gana FUT
+Cuota (Odds): 1.53
+Resultado:gano
+
+stake:5
+
+
+
+------------------------------------------
+single
+date: Jan 14
+categoria: futbol
+Selección (Equipos/Partido): Albacete Balompié vs Real Madrid
+Descripción (Logística del Pick): Real Madrid -1.5 (Hándicap asiático)
+Cuota (Odds): 1.725
+Resultado:perdio
+
+stake:5
+------------------------------------------
+single
+date:14
+categoria: futbol
+Selección (Equipos/Partido): Nigeria vs Marruecos
+Descripción (Logística del Pick): Marruecos se clasificará
+Cuota (Odds): 1.72
+Resultado:gano
+
+stake:2
+------------------------------------------
+single
+date: Jan 15
+categoria: basket
+Selección (Equipos/Partido): Milano vs Estrella Roja de Belgrado
+Descripción (Logística del Pick): gana Milano
+Cuota (Odds): 1.55
+Resultado:perdio
+
+stake:5
+------------------------------------------
+single
+date: Jan 16
+categoria: esports
+Selección (Equipos/Partido): Hanwha Life Esports vs T1
+Descripción (Logística del Pick): gana Hanwha Life Esports
+Cuota (Odds): 3.00
+Resultado:perdio
+
+stake:5
+------------------------------------------
+single
+date: Jan 16
+categoria: futbol
+Selección (Equipos/Partido): Real Madrid vs Barcelona
+Descripción (Logística del Pick): gana Real Madrid
+Cuota (Odds): 1.80
+Resultado:gano
+
+stake:5
+------------------------------------------
+double
+date: Jan 17
+categoria: futbol
+Selección (Equipos/Partido): Real Madrid vs Levante
+Descripción (Logística del Pick): Real Madrid -1.0 (Hándicap asiático)
+Cuota (Odds): 1.35
+Resultado:gabno
+
+categoria: futbol
+Selección (Equipos/Partido): AD Ceuta vs Valladolid
+Descripción (Logística del Pick): Más de 1 gol (Total de goles)
+Cuota (Odds): 1.61
+Resultado:gano
+
+stake:5
+------------------------------------------
+double
+date: Jan 17
+categoria: futbol
+Selección (Equipos/Partido): Real Betis vs Villarreal
+Descripción (Logística del Pick): Más de 1 gol
+Cuota (Odds): 1.28
+Resultado:gano
+
+categoria: futbol
+Selección (Equipos/Partido): Brasil (VII) vs Chile (VII)
+Descripción (Logística del Pick): gana Brasil (VII)
+Cuota (Odds): 1.25
+Resultado:gano 
+
+stake:5
+------------------------------------------
+double
+date: Jan 18
+categoria: futbol
+Selección (Equipos/Partido): Atlético de Madrid vs Alavés
+Descripción (Logística del Pick): gana Atlético de Madrid
+Cuota (Odds): 1.38
+Resultado:gano
+
+categoria: esports
+Selección (Equipos/Partido): EYEBALLERS vs Team Vitality
+Descripción (Logística del Pick): gana Team Vitality
+Cuota (Odds): 1.12
+Resultado:gano
+
+stake:
+------------------------------------------
+single
+date: Jan 20
+categoria: futbol
+Selección (Equipos/Partido): Real Madrid vs Mónaco
+Descripción (Logística del Pick): Real Madrid -1.0 (Hándicap asiático)
+Cuota (Odds): 1.55
+Resultado: gano
+
+stake:5
+------------------------------------------
+double
+date: Jan 21
+categoria: esports
+Selección (Equipos/Partido): Hanwha Life Esports vs Hanjin Brion
+Descripción (Logística del Pick): gana Hanwha Life Esports
+Cuota (Odds): 1.071
+Resultado:gano
+
+categoria: tenis
+Selección (Equipos/Partido): Jaume Munar vs Casper Ruud
+Descripción (Logística del Pick): gana Casper Ruud
+Cuota (Odds): 1.44
+Resultado:gano
+
+stake:5
+------------------------------------------
+double
+date: Jan 22
+categoria: futbol
+Selección (Equipos/Partido): Celta de Vigo vs Lille
+Descripción (Logística del Pick): Celta de Vigo o Empate (Doble oportunidad)
+Cuota (Odds): 1.36
+Resultado:gano
+
+categoria: esports
+Selección (Equipos/Partido): HEROIC vs FURIA
+Descripción (Logística del Pick): gana FURIA
+Cuota (Odds): 1.12
+Resultado:gano
+
+stake:5
+------------------------------------------
+double
+date: Jan 24
+categoria: futbol
+Selección (Equipos/Partido): Manchester City vs Wolverhampton
+Descripción (Logística del Pick): gana Manchester City
+Cuota (Odds): 1.40
+Resultado:gano
+
+categoria: futbol
+Selección (Equipos/Partido): Villarreal vs Real Madrid
+Descripción (Logística del Pick): Real Madrid más de 2.5 remates a puerta
+Cuota (Odds): 1.071
+Resultado:gano
+
+stake: 1
+------------------------------------------
+single
+date: Jan 25
+categoria: futbol
+Selección (Equipos/Partido): Barcelona vs Real Oviedo
+Descripción (Logística del Pick): Más de 2 goles (Equipo local)
+Cuota (Odds): 1.50
+Resultado:gano
+
+stake: 1
+
+
+
+------------------------------------------
+single
+date:26 jan
+categoria: esports
+Selección (Equipos/Partido): Bilibili Gaming vs JD Gaming
+Descripción (Logística del Pick): gana Bilibili Gaming
+Cuota (Odds): 1.66
+Resultado:perdio
+
+stake:1
+------------------------------------------
+single
+date: Jan 26
+categoria: esports
+Selección (Equipos/Partido): Movistar KOI vs GIANTX
+Descripción (Logística del Pick): gana Movistar KOI
+Cuota (Odds): 1.57
+Resultado:perdio
+
+stake: 5
+------------------------------------------
+double
+date: Jan 27
+categoria: basket
+Selección (Equipos/Partido): París vs Real Madrid
+Descripción (Logística del Pick): París +22.5 (Hándicap)
+Cuota (Odds): 1.076
+Resultado:gano
+
+categoria: esports
+Selección (Equipos/Partido): FUT Esports vs Fnatic
+Descripción (Logística del Pick): gana Fnatic
+Cuota (Odds): 1.44
+Resultado:gano
+
+stake: 3
+------------------------------------------
+double
+date: Jan 28
+categoria: futbol
+Selección (Equipos/Partido): Barcelona vs FC Copenhague
+Descripción (Logística del Pick): gana Barcelona
+Cuota (Odds): 1.16
+Resultado:gano
+
+categoria: esports
+Selección (Equipos/Partido): Passion UA vs G2 Esports
+Descripción (Logística del Pick): gana G2 Esports
+Cuota (Odds): 1.36
+Resultado:gano
+
+stake: 5
+------------------------------------------
+single
+date: Jan 28
+categoria: futbol
+Selección (Equipos/Partido): Benfica vs Real Madrid
+Descripción (Logística del Pick): Ambos equipos anotarán (Sí)
+Cuota (Odds): 1.50
+Resultado:gano
+
+stake: 1
+------------------------------------------
+single
+date:30 jan
+categoria: futbol
+Selección (Equipos/Partido): Espanyol vs Alavés
+Descripción (Logística del Pick): Más de 2.5 goles
+Cuota (Odds): 1.50
+Resultado:gano
+
+stake:1
+------------------------------------------
+single
+date: Jan 31
+categoria: esports
+Selección (Equipos/Partido): Miami Heretics vs Vancouver Surge
+Descripción (Logística del Pick): gana Miami Heretics
+Cuota (Odds): 1.50
+Resultado:gano
+
+stake: 1
+------------------------------------------
+single
+date:31 jan
+categoria: esports
+Selección (Equipos/Partido): FaZe Clan vs 3DMAX
+Descripción (Logística del Pick): FaZe Clan gana 2º mapa
+Cuota (Odds): 1.61
+Resultado:perdio
+
+stake:1
+------------------------------------------
+single
+date: 31 jan
+categoria: futbol
+Selección (Equipos/Partido): Elche vs Barcelona
+Descripción (Logística del Pick): Más de 1.5 goles (1ª mitad)
+Cuota (Odds): 1.50
+Resultado:gano
+
+stake: 5
+------------------------------------------
+single
+date:31 jan
+categoria: futbol
+Selección (Equipos/Partido): Elche vs Barcelona
+Descripción (Logística del Pick): gana Barcelona
+Cuota (Odds): 1.50
+Resultado:gano
+
+stake: 10

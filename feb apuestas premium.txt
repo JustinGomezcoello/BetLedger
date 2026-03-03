@@ -1,0 +1,167 @@
+double
+date:feb 1 
+categoria: tenis
+Selección (Equipos/Partido): alacaraz vs djokovic 
+Descripción (Logística del Pick) gana alcaraz
+Cuota (Odds):1.44
+gano alcaraz
+
+categoria: futbol
+Selección (Equipos/Partido): real madrid vs rayo vallecano
+Descripción (Logística del Pick) gana real madrid
+Cuota (Odds):1.33
+gano real madrid
+
+--------------------------------------
+single
+date:feb 1 
+categoria: futbol
+Selección (Equipos/Partido): real madrid vs rayo vallecano
+Descripción (Logística del Pick) gana real madrid
+Cuota (Odds):2.00
+gano real madrid
+
+--------------------------------------
+single
+date:feb 8 
+categoria: futbol
+Selección (Equipos/Partido): valencia vs real madrid
+Descripción (Logística del Pick) gana real madrird
+Cuota (Odds):1.72
+gano real madrid
+
+--------------------------------------
+single
+date:feb 8 
+categoria: lol
+Selección (Equipos/Partido): g2 esports vs fnatic
+Descripción (Logística del Pick) gana g2
+Cuota (Odds):1.59
+gano g2
+
+--------------------------------------
+single
+date:feb 8 
+categoria: futbol
+Selección (Equipos/Partido): psg vs marsella
+Descripción (Logística del Pick) gana psg
+Cuota (Odds):1.50
+gano psg
+
+--------------------------------------
+single
+date:feb 16
+categoria: lol
+Selección (Equipos/Partido): vitality vs movistar KOI
+Descripción (Logística del Pick) gana MOVISTAR KOI
+Cuota (Odds):1.50
+gano MOVISTAR KOI
+
+
+--------------------------------------
+single
+date:feb 20
+categoria: futbol
+Selección (Equipos/Partido):ath bilbao vs elche
+Descripción (Logística del Pick) gana athletic club bilbao
+Cuota (Odds):1.72
+gano thletic club bilbao
+
+--------------------------------------
+single
+date:feb 21
+categoria: baket
+Selección (Equipos/Partido): barcelona vs baskonia
+Descripción (Logística del Pick) gana barcelona
+Cuota (Odds):1.50
+perdio barcelona
+
+
+--------------------------------------
+double
+date:feb 21
+categoria: box
+Selección (Equipos/Partido): del vallle vs leavitt
+Descripción (Logística del Pick) gana delvalle
+Cuota (Odds):1.24
+perdio delvalle
+
+categoria: lol
+Selección (Equipos/Partido): t1 vs dplus KIA
+Descripción (Logística del Pick) gana t1
+Cuota (Odds):1.33
+gano t1
+
+--------------------------------------
+single
+date:feb 21
+categoria: mma
+Selección (Equipos/Partido): ige d vs costa M
+Descripción (Logística del Pick) gana Costa M
+Cuota (Odds):1.50
+Gano CostaM
+
+--------------------------------------
+single
+date:feb 22
+categoria: lol
+Selección (Equipos/Partido): karmine corps vs vitality
+Descripción (Logística del Pick) gana karmine
+Cuota (Odds):1.94
+Gano karmine
+
+--------------------------------------
+single
+date:feb 22
+categoria: lol
+Selección (Equipos/Partido): villareal vs valencia
+Descripción (Logística del Pick) gana valencia
+Cuota (Odds):1.67
+Gano valencia
+
+
+--------------------------------------
+single
+date:feb 26
+categoria: basket
+Selección (Equipos/Partido): panathinaikos vs paris
+Descripción (Logística del Pick) gana panathinaikos
+Cuota (Odds):1.40
+perdio panathinaikos
+
+--------------------------------------
+double
+date:feb 26
+categoria: lol
+Selección (Equipos/Partido): bilibili vs weibo
+Descripción (Logística del Pick) gana bilibili
+Cuota (Odds):1.28
+gano bilibili
+
+categoria: lol
+Selección (Equipos/Partido): karmine coprs vs giantx
+Descripción (Logística del Pick) gana karmine corps
+Cuota (Odds):1.22
+gano karmine corp
+
+--------------------------------------
+double
+date:feb 27
+categoria: lol
+Selección (Equipos/Partido): d pus kia vs FearX
+Descripción (Logística del Pick) +2.5 dpus kia
+Cuota (Odds):1.20
+perdio dpus
+
+categoria: lol
+Selección (Equipos/Partido): top esports vs team we
+Descripción (Logística del Pick) gana top esports
+Cuota (Odds):1.33
+gano top sports
+
+
+
+
+
+
+

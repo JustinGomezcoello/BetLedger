@@ -54,9 +54,12 @@ const resources = {
                 "confirmWin": "Are you sure you want to resolve this bet as WON?",
                 "confirmLoss": "Are you sure you want to resolve this bet as LOST?",
                 "confirmDel": "Delete this pending bet completely?",
+                "confirmDelResolved": "Deleting this resolved bet will revert its bankroll changes. Continue?",
                 "errResolve": "Failed to resolve bet.",
-                "errDel": "You can only delete pending bets to avoid messing up the bankroll history.",
-                "loading": "Loading History..."
+                "loading": "Loading History...",
+                "filterAll": "All Bets",
+                "filterPending": "Pending",
+                "filterResolved": "Resolved"
             },
             "newBet": {
                 "title": "New Bet",
@@ -149,16 +152,19 @@ const resources = {
                 "won": "Ganada",
                 "lost": "Perdida",
                 "pending": "Pendiente",
-                "winBtn": "Ganar",
-                "lossBtn": "Perder",
+                "winBtn": "Ganada",
+                "lossBtn": "Perdida",
                 "delBtn": "Eliminar Apuesta",
                 "noHistory": "No hay apuestas en tu historial. ¡Ve a Nueva Apuesta para registrar la primera!",
                 "confirmWin": "¿Estás seguro de que quieres resolver esta apuesta como GANADA?",
                 "confirmLoss": "¿Estás seguro de que quieres resolver esta apuesta como PERDIDA?",
                 "confirmDel": "¿Eliminar esta apuesta pendiente por completo?",
+                "confirmDelResolved": "Eliminar esta apuesta resuelta deshará los cambios en tu banco. ¿Continuar?",
                 "errResolve": "Error al resolver la apuesta.",
-                "errDel": "Solo puedes eliminar apuestas pendientes para evitar descuadrar el historial de tu banco.",
-                "loading": "Cargando Historial..."
+                "loading": "Cargando Historial...",
+                "filterAll": "Todas",
+                "filterPending": "Pendientes",
+                "filterResolved": "Resueltas"
             },
             "newBet": {
                 "title": "Nueva Apuesta",

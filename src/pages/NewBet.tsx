@@ -6,14 +6,14 @@ import { useTranslation } from 'react-i18next';
 export const NewBet = () => {
     const { t } = useTranslation();
     const [formData, setFormData] = useState({
-        bet_date: new Date().toISOString().split('T')[0],
-        bet_type: 'single',
-        category: 'Football',
+        bet_date: '',
+        bet_type: '',
+        category: '',
         selection: '',
         description: '',
         odds: '',
         stake_norm: '5',
-        channel: 'Sport Apuestas',
+        channel: '',
         tipster_amount: ''
     });
 
@@ -74,8 +74,8 @@ export const NewBet = () => {
         // Tipster Amount is only logically required for Standard 'Sport Apuestas' as Premium often omits it.
         const isPremium = formData.channel === 'Sport Apuestas Premium';
 
-        if (!formData.selection || !formData.odds) {
-            setError('Por favor, completa los campos base (selección, cuota).');
+        if (!formData.selection || !formData.odds || !formData.channel || !formData.bet_date || !formData.bet_type || !formData.category) {
+            setError('Por favor, completa todos los campos obligatorios (Canal, Fecha, Tipo, Categoría, Selección, Cuota).');
             return;
         }
 
@@ -225,6 +225,7 @@ export const NewBet = () => {
                                     onChange={handleChange}
                                     className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-semibold text-blue-300"
                                 >
+                                    <option value="" disabled>Selecciona el canal...</option>
                                     <option value="Sport Apuestas">Sport Apuestas</option>
                                     <option value="Sport Apuestas Premium">Sport Apuestas Premium</option>
                                 </select>
@@ -248,8 +249,10 @@ export const NewBet = () => {
                                     name="bet_type"
                                     value={formData.bet_type}
                                     onChange={handleChange}
-                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                    required
+                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-semibold"
                                 >
+                                    <option value="" disabled>Selecciona un tipo...</option>
                                     <option value="single">{t('newBet.single')}</option>
                                     <option value="double">{t('newBet.double')}</option>
                                 </select>
