@@ -25,6 +25,7 @@ pipeline/artifacts/
 pipeline/private/
 private-fixtures.json
 tmp-artifacts/
+.sites-tmp/
 
 # Editor directories and files
 .vscode/*
