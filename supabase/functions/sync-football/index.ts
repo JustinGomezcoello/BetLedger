@@ -140,9 +140,12 @@ Deno.serve(async (request) => {
         const codes = competitionCode ? [competitionCode] : SUPPORTED;
         if (Deno.env.get('FOOTBALL_DATA_API_KEY')) {
           try {
+            const requestedDate = scope === 'date' ? body.date : undefined;
             const result = await syncFootballData(actor, {
               competitionCodes: codes.filter((code) => ['PL', 'PD', 'BL1', 'UCL'].includes(code)),
-              date: scope === 'date' ? body.date : undefined,
+              date: requestedDate,
+              from: requestedDate ? undefined : utcDate(-1),
+              to: requestedDate ? undefined : utcDate(14),
             });
             callsUsed += result.callsUsed;
             recordsWritten += result.recordsWritten;

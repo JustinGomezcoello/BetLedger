@@ -407,6 +407,8 @@ const persistStandings = async (
 export type FootballDataSyncOptions = {
   competitionCodes?: string[];
   date?: string;
+  from?: string;
+  to?: string;
 };
 
 export const syncFootballData = async (actor: Actor, options: FootballDataSyncOptions = {}) => {
@@ -426,9 +428,16 @@ export const syncFootballData = async (actor: Actor, options: FootballDataSyncOp
     const competition = rawCompetition as CompetitionRow;
     const externalCode = stringValue(record(competition.provider_ids).football_data);
     if (!externalCode) continue;
-    const filters: Record<string, string> = options.date
-      ? { dateFrom: options.date, dateTo: options.date }
-      : {};
+    const filters: Record<string, string> = {};
+    if (options.date) {
+      filters.dateFrom = options.date;
+      filters.dateTo = options.date;
+    } else if (options.from && options.to) {
+      filters.dateFrom = options.from;
+      filters.dateTo = options.to;
+    } else if (options.from || options.to) {
+      throw new HttpError(500, 'invalid_sync_window', 'El rango de sincronización requiere from y to');
+    }
     const matchesEndpoint = `competitions/${encodeURIComponent(externalCode)}/matches`;
     const matches = await apiRequest(actor, matchesEndpoint, filters);
     endpoints.push({ endpoint: matchesEndpoint, status: matches.status, provider_calls: matches.providerCalls });
