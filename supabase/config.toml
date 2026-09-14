@@ -1,6 +1,15 @@
 project_id = "betledger"
 
 [auth]
+site_url = "https://bet-ledger.vercel.app"
+additional_redirect_urls = [
+  "https://bet-ledger.vercel.app",
+  "https://bet-ledger.vercel.app/login",
+  "https://bet-ledger.vercel.app/reset-password",
+  "https://betledger.justingomezcoello.chatgpt.site",
+  "https://betledger.justingomezcoello.chatgpt.site/login",
+  "https://betledger.justingomezcoello.chatgpt.site/reset-password",
+]
 enable_signup = false
 
 [functions.refresh-fixture]

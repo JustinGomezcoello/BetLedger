@@ -11,7 +11,7 @@ type LoginLocationState = {
 export const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const configuredOwnerEmail = (import.meta.env.VITE_OWNER_EMAIL ?? '').trim();
+  const configuredOwnerEmail = (import.meta.env.VITE_OWNER_EMAIL ?? 'justingomezcoello@gmail.com').trim();
   const [email, setEmail] = useState(configuredOwnerEmail);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
