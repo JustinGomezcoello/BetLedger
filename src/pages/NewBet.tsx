@@ -2,17 +2,33 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Save, AlertCircle, PlusCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
+import { errorMessage, placeManualBet } from '../lib/ledger';
+import type { BankrollProfile, ChannelBankroll, ManualBetInput } from '../lib/ledger';
+import { registerPaperRecommendation } from '../lib/prediction-data';
+
+type RecommendationState = {
+    recommendation?: {
+        recommendationId: string;
+        fixtureId: string;
+        selection: string;
+        odds: number | null;
+        description: string;
+    };
+};
 
 export const NewBet = () => {
     const { t } = useTranslation();
+    const location = useLocation();
+    const recommendation = (location.state as RecommendationState | null)?.recommendation;
     const [formData, setFormData] = useState({
         bet_date: '',
-        bet_type: '',
-        category: '',
-        selection: '',
-        description: '',
-        odds: '',
-        stake_norm: '5',
+        bet_type: recommendation ? 'single' : '',
+        category: recommendation ? 'Football' : '',
+        selection: recommendation?.selection ?? '',
+        description: recommendation?.description ?? '',
+        odds: recommendation?.odds?.toString() ?? '',
+        stake_norm: recommendation ? '' : '5',
         channel: '',
         tipster_amount: ''
     });
@@ -26,21 +42,23 @@ export const NewBet = () => {
 
     const [tipsterStakeInput, setTipsterStakeInput] = useState('');
     const [isTracking, setIsTracking] = useState(false);
+    const [confirmedRegistration, setConfirmedRegistration] = useState(false);
+    const [submissionIdempotencyKey, setSubmissionIdempotencyKey] = useState(() => crypto.randomUUID());
 
-    const [userProfile, setUserProfile] = useState<any>(null);
-    const [channelProfiles, setChannelProfiles] = useState<any[]>([]);
+    const [userProfile, setUserProfile] = useState<BankrollProfile | null>(null);
+    const [channelProfiles, setChannelProfiles] = useState<ChannelBankroll[]>([]);
 
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
-            const { data } = await supabase.from('bankroll_profiles').select('id, starting_bankroll, current_bankroll, stake10_percent').limit(1).single();
+            const { data } = await supabase.from('bankroll_profiles').select('id, starting_bankroll, current_bankroll, stake10_percent, use_compounding').limit(1).single();
             if (data) {
-                setUserProfile(data);
+                setUserProfile(data as BankrollProfile);
             }
             const { data: cbData } = await supabase.from('channel_bankrolls').select('*');
             if (cbData) {
-                setChannelProfiles(cbData);
+                setChannelProfiles(cbData as ChannelBankroll[]);
             }
         };
         fetchProfile();
@@ -48,20 +66,43 @@ export const NewBet = () => {
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState('');
 
+    const stakeLimitForChannel = (channel: string) => {
+        const configured = Number(
+            channelProfiles.find((profile) => profile.channel_name === channel)?.max_stake_norm,
+        );
+        if (Number.isInteger(configured) && configured >= 1 && configured <= 15) return configured;
+        return channel === 'Sport Apuestas Premium' ? 15 : 10;
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
 
         // Auto-adjust scale based on channel
         if (name === 'channel') {
+            const nextLimit = stakeLimitForChannel(value);
+            if (recommendation) {
+                setTipsterStakeInput('');
+                setFormData(prev => ({
+                    ...prev,
+                    channel: value,
+                    tipster_amount: '',
+                    stake_norm: Number(prev.stake_norm) > nextLimit
+                        ? ''
+                        : prev.stake_norm,
+                }));
+                return;
+            }
             if (value === 'Sport Apuestas Premium') {
                 setTipsterStakeInput('');
-                setFormData(prev => ({ ...prev, channel: value, tipster_amount: '', stake_norm: '15' }));
+                setFormData(prev => ({ ...prev, channel: value, tipster_amount: '', stake_norm: String(nextLimit) }));
             } else {
                 setFormData(prev => ({
                     ...prev,
                     channel: value,
-                    stake_norm: parseInt(prev.stake_norm) > 10 ? '5' : prev.stake_norm
+                    stake_norm: parseInt(prev.stake_norm) > nextLimit
+                        ? String(Math.min(5, nextLimit))
+                        : prev.stake_norm
                 }));
             }
             return;
@@ -74,13 +115,18 @@ export const NewBet = () => {
         // Tipster Amount is only logically required for Standard 'Sport Apuestas' as Premium often omits it.
         const isPremium = formData.channel === 'Sport Apuestas Premium';
 
-        if (!formData.selection || !formData.odds || !formData.channel || !formData.bet_date || !formData.bet_type || !formData.category) {
-            setError('Por favor, completa todos los campos obligatorios (Canal, Fecha, Tipo, Categoría, Selección, Cuota).');
+        if (!formData.selection || !formData.odds || !formData.channel || !formData.bet_date || !formData.bet_type || !formData.category || !formData.stake_norm) {
+            setError('Por favor, completa todos los campos obligatorios, incluido el stake elegido por ti.');
             return;
         }
 
-        if (!isPremium && (!formData.tipster_amount || !tipsterStakeInput)) {
+        if (!recommendation && !isPremium && (!formData.tipster_amount || !tipsterStakeInput)) {
             setError('Para el canal Sport Apuestas normal, debes llenar el monto y stake del Tipster.');
+            return;
+        }
+
+        if (recommendation && !confirmedRegistration) {
+            setError('Confirma explícitamente que revisaste la apuesta antes de registrarla.');
             return;
         }
 
@@ -89,42 +135,21 @@ export const NewBet = () => {
             return;
         }
 
+        const selectedStakeNorm = Number(formData.stake_norm);
+        const selectedStakeLimit = stakeLimitForChannel(formData.channel);
+        if (!Number.isInteger(selectedStakeNorm) || selectedStakeNorm < 1 || selectedStakeNorm > selectedStakeLimit) {
+            setError(`El stake debe ser un entero entre 1 y ${selectedStakeLimit} para este canal.`);
+            return;
+        }
+
         setLoading(true);
         setError('');
         setSuccess(false);
-        setSuccess(false);
 
         try {
-            // Get active bankroll profile to calculate actual stake amount
-            const { data: profileData, error: profileError } = await supabase
-                .from('bankroll_profiles')
-                .select('id, starting_bankroll, current_bankroll, stake10_percent')
-                .limit(1)
-                .single();
-
-            if (profileError) throw profileError;
-
-            // Fetch channel bankroll
-            const { data: cbData } = await supabase
-                .from('channel_bankrolls')
-                .select('starting_bankroll')
-                .eq('profile_id', profileData.id)
-                .eq('channel_name', formData.channel)
-                .single();
-
-            const activeBankroll = cbData ? cbData.starting_bankroll : profileData.starting_bankroll;
-            // Calculate the specific amount for this stake: Stake N = N% of Bankroll
-            let amount = (parseInt(formData.stake_norm) / 100) * activeBankroll;
-            let finalStakeNorm = parseInt(formData.stake_norm);
-
-            // If tracking mode, user invests 0
-            if (isTracking) {
-                amount = 0;
-            }
-
             // Calculate Tipster Data
             let tAmount = parseFloat(formData.tipster_amount) || 0;
-            if (formData.channel === 'Sport Apuestas Premium') {
+            if (!recommendation && formData.channel === 'Sport Apuestas Premium') {
                 // Tipster Bankroll is conceptually 20,000. Stake N = N% of 20k.
                 tAmount = (parseInt(formData.stake_norm) / 100) * 20000;
             }
@@ -143,25 +168,25 @@ export const NewBet = () => {
                 finalOdds = (parseFloat(formData.odds) || 1) * (parseFloat(leg2.odds) || 1);
             }
 
-            const { error: insertError } = await supabase
-                .from('manual_bets')
-                .insert([{
-                    profile_id: profileData.id,
-                    bet_date: new Date(formData.bet_date).toISOString(),
-                    bet_type: formData.bet_type,
-                    category: finalCategory,
-                    selection: finalSelection,
-                    description: finalDescription,
-                    odds: finalOdds,
-                    stake_norm: finalStakeNorm,
-                    stake_amount: amount,
-                    status: 'pending',
-                    channel: formData.channel,
-                    tipster_amount: tAmount > 0 ? tAmount : null,
-                    tipster_profit: null
-                }]);
+            const betInput: ManualBetInput = {
+                profile_id: userProfile?.id,
+                bet_date: new Date(formData.bet_date).toISOString(),
+                bet_type: formData.bet_type as ManualBetInput['bet_type'],
+                category: finalCategory,
+                selection: finalSelection,
+                description: finalDescription,
+                odds: finalOdds,
+                stake_norm: parseInt(formData.stake_norm),
+                channel: formData.channel,
+                tipster_amount: tAmount > 0 ? tAmount : null,
+                is_tracking: isTracking,
+            };
 
-            if (insertError) throw insertError;
+            if (recommendation) {
+                await registerPaperRecommendation(recommendation.recommendationId, betInput, submissionIdempotencyKey);
+            } else {
+                await placeManualBet(betInput, submissionIdempotencyKey);
+            }
 
             setSuccess(true);
             setFormData({
@@ -173,6 +198,8 @@ export const NewBet = () => {
             });
             setTipsterStakeInput('');
             setIsTracking(false);
+            setConfirmedRegistration(false);
+            setSubmissionIdempotencyKey(crypto.randomUUID());
             setLeg2({
                 selection: '',
                 description: '',
@@ -180,13 +207,23 @@ export const NewBet = () => {
                 category: ''
             });
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.message || t('newBet.error', 'Error al guardar la apuesta.'));
+            setError(errorMessage(err, t('newBet.error', 'Error al guardar la apuesta.')));
         } finally {
             setLoading(false);
         }
     };
+
+    const selectedChannelProfile = channelProfiles.find((profile) => profile.channel_name === formData.channel);
+    const selectedStakeLimit = stakeLimitForChannel(formData.channel);
+    const stakeBase = userProfile?.use_compounding
+        ? (selectedChannelProfile?.current_bankroll ?? userProfile.current_bankroll)
+        : (selectedChannelProfile?.starting_bankroll ?? userProfile?.starting_bankroll ?? 0);
+    const selectedStake = Number(formData.stake_norm);
+    const previewStake = userProfile && Number.isFinite(selectedStake) && selectedStake > 0
+        ? stakeBase * Number(userProfile.stake10_percent) * selectedStake / 10
+        : null;
 
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
@@ -249,8 +286,9 @@ export const NewBet = () => {
                                     name="bet_type"
                                     value={formData.bet_type}
                                     onChange={handleChange}
+                                    disabled={Boolean(recommendation)}
                                     required
-                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-semibold"
+                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-semibold disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     <option value="" disabled>Selecciona un tipo...</option>
                                     <option value="single">{t('newBet.single')}</option>
@@ -274,6 +312,14 @@ export const NewBet = () => {
                             </div>
 
                             <div className="space-y-2 md:col-span-2 mt-4 pt-4 border-t border-slate-700/50">
+                                {recommendation ? (
+                                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                                        <h3 className="font-bold text-amber-200">Sin stake sugerido</h3>
+                                        <p className="mt-1 text-sm leading-6 text-amber-100/80">
+                                            El modelo aporta probabilidad y valor, pero no decide cuánto apostar. Elige tu stake manualmente y confirma el registro al final.
+                                        </p>
+                                    </div>
+                                ) : (<>
                                 <h3 className="text-lg font-bold text-blue-400 mb-2">💰 Inversión del Tipster</h3>
                                 {formData.channel === 'Sport Apuestas' ? (
                                     <div className="space-y-4">
@@ -361,6 +407,7 @@ export const NewBet = () => {
                                         </div>
                                     </div>
                                 )}
+                                </>)}
                             </div>
 
                             <div className="space-y-4 md:col-span-2 mt-4">
@@ -378,6 +425,7 @@ export const NewBet = () => {
                                             name="category"
                                             value={formData.category}
                                             onChange={handleChange}
+                                            readOnly={Boolean(recommendation)}
                                             placeholder={t('newBet.catPlaceholder')}
                                             required
                                             className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
@@ -391,6 +439,7 @@ export const NewBet = () => {
                                             name="selection"
                                             value={formData.selection}
                                             onChange={handleChange}
+                                            readOnly={Boolean(recommendation)}
                                             placeholder={t('newBet.selPlaceholder')}
                                             required
                                             className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
@@ -403,6 +452,7 @@ export const NewBet = () => {
                                             name="description"
                                             value={formData.description}
                                             onChange={handleChange}
+                                            readOnly={Boolean(recommendation)}
                                             placeholder={t('newBet.descPlaceholder')}
                                             rows={2}
                                             className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
@@ -412,7 +462,7 @@ export const NewBet = () => {
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-slate-300">
                                             {t('newBet.odds', 'Cuota')}
-                                            {formData.channel === 'Sport Apuestas Premium' && <span className="text-slate-500 text-xs block mt-1">(Premium a veces no envía cuota, búscala manualmente)</span>}
+                                            {!recommendation && formData.channel === 'Sport Apuestas Premium' && <span className="text-slate-500 text-xs block mt-1">(Premium a veces no envía cuota, búscala manualmente)</span>}
                                         </label>
                                         <input
                                             type="number"
@@ -421,6 +471,7 @@ export const NewBet = () => {
                                             min="1.01"
                                             value={formData.odds}
                                             onChange={handleChange}
+                                            readOnly={Boolean(recommendation)}
                                             placeholder="Ej. 1.85"
                                             required
                                             className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
@@ -497,10 +548,22 @@ export const NewBet = () => {
 
                         </div>
 
+                        {recommendation && (
+                            <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                                <input
+                                    type="checkbox"
+                                    checked={confirmedRegistration}
+                                    onChange={(event) => setConfirmedRegistration(event.target.checked)}
+                                    className="mt-0.5 h-5 w-5 rounded border-amber-400/60 bg-slate-900 text-amber-500"
+                                />
+                                <span>Confirmo que revisé la selección, la cuota, la fecha, el canal y el stake que elegí manualmente.</span>
+                            </label>
+                        )}
+
                         <div className="pt-6 flex justify-end">
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || Boolean(recommendation && !confirmedRegistration)}
                                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-8 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transition-all flex items-center gap-2 disabled:opacity-50"
                             >
                                 <Save size={20} />
@@ -521,25 +584,46 @@ export const NewBet = () => {
                             📊 Mi Gestión Personal
                         </h3>
                         <p className="text-sm text-slate-400 mb-6 border-b border-slate-700/50 pb-4 relative z-10">
-                            Aislando el tamaño del tipster a tu capital real.
-                            <br /><span className="text-xs text-emerald-400/80 mt-1 inline-block">💡 <b>Recomendación:</b> Calcula este monto sobre tu Bank Inicial mensual (fixed staking), no sobre el bank diario, para no castigar tus rachas.</span>
+                            {recommendation
+                                ? 'El modelo no propone stake. Esta sección sólo calcula el monto después de que tú elijas uno.'
+                                : 'Aislando el tamaño del tipster a tu capital real.'}
+                            {!recommendation && <><br /><span className="text-xs text-emerald-400/80 mt-1 inline-block">💡 <b>Recomendación:</b> Calcula este monto sobre tu Bank Inicial mensual (fixed staking), no sobre el bank diario, para no castigar tus rachas.</span></>}
                         </p>
 
-                        <div className={`space-y-6 relative z-10 ${isTracking ? 'opacity-50 pointer-events-none' : ''}`}>
-                            {/* Visual Slider Auto-Updated */}
+                        <div className={`space-y-6 relative z-10 ${isTracking && !recommendation ? 'opacity-50 pointer-events-none' : ''}`}>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Tu Stake Asignado</label>
-                                <input
-                                    type="range"
-                                    name="stake_norm"
-                                    min="1" max={formData.channel === 'Sport Apuestas Premium' ? "15" : "10"}
-                                    value={formData.stake_norm}
-                                    onChange={handleChange}
-                                    className="w-full h-2 bg-slate-800 border border-slate-700 rounded-lg appearance-none cursor-pointer mt-4
-                                           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-emerald-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(16,185,129,0.8)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-110
-                                           [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:shadow-[0_0_15px_rgba(16,185,129,0.8)] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:hover:scale-110"
-                                />
-                                <div className="text-center text-emerald-400 font-bold text-lg mt-2">{formData.stake_norm} / {formData.channel === 'Sport Apuestas Premium' ? '15' : '10'}</div>
+                                <label htmlFor="stake-norm" className="text-sm font-medium text-slate-300">
+                                    {recommendation ? 'Stake elegido por ti' : 'Tu Stake Asignado'}
+                                </label>
+                                {recommendation ? (
+                                    <input
+                                        id="stake-norm"
+                                        type="number"
+                                        name="stake_norm"
+                                        min="1"
+                                        max={selectedStakeLimit}
+                                        step="1"
+                                        value={formData.stake_norm}
+                                        onChange={handleChange}
+                                        placeholder={formData.channel ? 'Escribe tu stake' : 'Primero selecciona el canal'}
+                                        disabled={!formData.channel}
+                                        required
+                                        className="w-full rounded-xl border border-emerald-500/30 bg-slate-900 px-4 py-3 font-mono text-lg text-emerald-300 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                ) : (
+                                    <input
+                                        id="stake-norm"
+                                        type="range"
+                                        name="stake_norm"
+                                        min="1" max={selectedStakeLimit}
+                                        value={formData.stake_norm}
+                                        onChange={handleChange}
+                                        className="w-full h-2 bg-slate-800 border border-slate-700 rounded-lg appearance-none cursor-pointer mt-4
+                                               [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-emerald-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(16,185,129,0.8)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-110
+                                               [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:shadow-[0_0_15px_rgba(16,185,129,0.8)] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:hover:scale-110"
+                                    />
+                                )}
+                                <div className="text-center text-emerald-400 font-bold text-lg mt-2">{formData.stake_norm || '—'} / {selectedStakeLimit}</div>
                             </div>
 
                             {userProfile && (
@@ -547,23 +631,15 @@ export const NewBet = () => {
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-slate-400">💵 Inversión Real (Tuya):</span>
                                         <span className="text-white font-bold font-mono text-lg">
-                                            ${(
-                                                (parseFloat(formData.stake_norm) / 100) *
-                                                (channelProfiles.find(cp => cp.channel_name === formData.channel)?.starting_bankroll || userProfile.starting_bankroll)
-                                            ).toFixed(2)}
+                                            {previewStake === null ? '—' : `$${previewStake.toFixed(2)}`}
                                         </span>
                                     </div>
 
-                                    {formData.odds && !isNaN(parseFloat(formData.odds)) && (
+                                    {previewStake !== null && formData.odds && !isNaN(parseFloat(formData.odds)) && (
                                         <div className="flex justify-between items-center text-sm border-t border-slate-700/50 pt-4">
                                             <span className="text-slate-400">✅ Tu Ganancia Estimada:</span>
                                             <span className="text-emerald-400 font-bold font-mono text-2xl">
-                                                +${(
-                                                    ((parseFloat(formData.stake_norm) / 100) *
-                                                        (channelProfiles.find(cp => cp.channel_name === formData.channel)?.starting_bankroll || userProfile.starting_bankroll)) * parseFloat(formData.odds) -
-                                                    ((parseFloat(formData.stake_norm) / 100) *
-                                                        (channelProfiles.find(cp => cp.channel_name === formData.channel)?.starting_bankroll || userProfile.starting_bankroll))
-                                                ).toFixed(2)}
+                                                +${(previewStake * (parseFloat(formData.odds) - 1)).toFixed(2)}
                                             </span>
                                         </div>
                                     )}

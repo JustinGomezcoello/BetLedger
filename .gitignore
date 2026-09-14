@@ -8,9 +8,23 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.venv/
+__pycache__/
+*.py[cod]
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+.supabase/
+supabase/.temp/
+supabase/.branches/
+coverage/
+pipeline/artifacts/
+pipeline/private/
+private-fixtures.json
+tmp-artifacts/
 
 # Editor directories and files
 .vscode/*

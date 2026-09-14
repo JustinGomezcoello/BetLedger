@@ -1,0 +1,19 @@
+project_id = "betledger"
+
+[auth]
+enable_signup = false
+
+[functions.refresh-fixture]
+verify_jwt = false
+
+[functions.sync-football]
+verify_jwt = false
+
+[functions.extract-context]
+verify_jwt = false
+
+[functions.review-context]
+verify_jwt = false
+
+[functions.register-recommendation]
+verify_jwt = false

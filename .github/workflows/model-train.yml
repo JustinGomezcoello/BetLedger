@@ -1,0 +1,135 @@
+name: Football model training
+
+on:
+  schedule:
+    # 09:00 UTC is 04:00 in America/Guayaquil throughout the year.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Train even when no new completed fixtures are detected
+        required: true
+        default: false
+        type: boolean
+      competition_code:
+        description: Optional competition code; blank evaluates every enabled competition
+        required: false
+        type: string
+      promote_if_eligible:
+        description: Allow promotion only when every statistical gate passes
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: betledger-model-training
+  cancel-in-progress: false
+
+jobs:
+  train:
+    name: Train and evaluate models
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    env:
+      MANUAL_FORCE: ${{ inputs.force }}
+      MANUAL_COMPETITION: ${{ inputs.competition_code }}
+      MANUAL_PROMOTION: ${{ inputs.promote_if_eligible }}
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      - name: Install training dependencies
+        run: python -m pip install --requirement pipeline/requirements.txt
+
+      - name: Train, evaluate, and conditionally promote
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BETLEDGER_OWNER_ID: ${{ secrets.BETLEDGER_OWNER_ID }}
+          BETLEDGER_SEALED_SEASON: ${{ secrets.BETLEDGER_SEALED_SEASON }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${SUPABASE_URL:-}" ]]; then
+            echo '::error::The SUPABASE_URL repository secret is not configured.'
+            exit 1
+          fi
+          if [[ "${SUPABASE_URL}" != https://* ]]; then
+            echo '::error::SUPABASE_URL must use HTTPS.'
+            exit 1
+          fi
+          if [[ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+            echo '::error::The SUPABASE_SERVICE_ROLE_KEY repository secret is not configured.'
+            exit 1
+          fi
+
+          force='false'
+          promote='true'
+          competition=''
+          trigger_type='scheduled'
+          if [[ "${GITHUB_EVENT_NAME}" == 'workflow_dispatch' ]]; then
+            force="${MANUAL_FORCE}"
+            promote="${MANUAL_PROMOTION}"
+            competition="${MANUAL_COMPETITION}"
+            trigger_type='manual'
+          fi
+
+          if [[ "${force}" != 'true' && "${force}" != 'false' ]]; then
+            echo '::error::force must be true or false.'
+            exit 1
+          fi
+          if [[ "${promote}" != 'true' && "${promote}" != 'false' ]]; then
+            echo '::error::promote_if_eligible must be true or false.'
+            exit 1
+          fi
+          if [[ -n "${competition}" && ! "${competition}" =~ ^[A-Za-z0-9_-]{2,20}$ ]]; then
+            echo '::error::competition_code is invalid.'
+            exit 1
+          fi
+
+          export FORCE_RETRAIN="${force}"
+          export COMPETITION_CODE="${competition^^}"
+          export PROMOTE_IF_ELIGIBLE="${promote}"
+          export TRAINING_TRIGGER_TYPE="${trigger_type}"
+          export TRAINING_IDEMPOTENCY_KEY="github-actions:${GITHUB_WORKFLOW}:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}:training"
+
+          python pipeline/train_model.py
+
+      - name: Detect generated model artifact
+        if: success()
+        id: artifact
+        shell: bash
+        run: |
+          shopt -s nullglob
+          artifacts=(pipeline/artifacts/*.json)
+          if (( ${#artifacts[@]} > 0 )); then
+            echo 'found=true' >> "${GITHUB_OUTPUT}"
+          else
+            echo 'found=false' >> "${GITHUB_OUTPUT}"
+            echo 'No artifact was generated; the training run was skipped.'
+          fi
+
+      - name: Preserve versioned model artifact
+        if: steps.artifact.outputs.found == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: betledger-model-${{ github.run_id }}-${{ github.run_attempt }}
+          path: pipeline/artifacts/*.json
+          if-no-files-found: error
+          retention-days: 90

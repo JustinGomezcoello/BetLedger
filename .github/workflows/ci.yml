@@ -1,0 +1,114 @@
+name: Continuous integration
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: betledger-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-and-edge:
+    name: Frontend and Edge Functions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Type-check Edge Functions with Deno
+        run: >-
+          npx --no-install deno check
+          supabase/functions/sync-football/index.ts
+          supabase/functions/refresh-fixture/index.ts
+          supabase/functions/extract-context/index.ts
+          supabase/functions/review-context/index.ts
+          supabase/functions/register-recommendation/index.ts
+
+  python-model:
+    name: Python model contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      - name: Install locked model dependencies
+        run: python -m pip install --requirement pipeline/requirements.txt
+
+      - name: Run model and golden-contract self-test
+        run: python pipeline/train_model.py --self-test
+
+      - name: Run gradient-boosting shadow self-test
+        run: python pipeline/gradient_boosting.py
+
+      - name: Run historical backfill adapter self-test
+        run: python pipeline/backfill_history.py --self-test
+
+  database:
+    name: Database migrations and security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked Supabase CLI
+        run: npm ci
+
+      - name: Start the minimal local Supabase stack
+        run: >-
+          npx --no-install supabase start
+          -x studio,imgproxy,mailpit,realtime,storage-api,edge-runtime,logflare,vector,supavisor
+
+      - name: Rebuild from incremental migrations
+        run: npx --no-install supabase db reset --local
+
+      - name: Run pgTAP security and ledger tests
+        run: npx --no-install supabase test db
+
+      - name: Stop local Supabase
+        if: always()
+        run: npx --no-install supabase stop --no-backup

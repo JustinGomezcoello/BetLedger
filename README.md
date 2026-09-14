@@ -1,74 +1,38 @@
-# React + TypeScript + Vite
+# BetLedger
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación privada de registro de apuestas y análisis probabilístico prepartido de fútbol. El motor publica 1X2 y Over/Under 2.5; BTTS, marcadores y clasificación UEFA son informativos. No coloca apuestas, no recomienda stake y puede concluir legítimamente `no apostar`.
 
-Currently, two official plugins are available:
+## Componentes
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 19 + TypeScript + Vite para login, ledger, predicciones y revisión humana.
+- Supabase Auth/Postgres/RLS y RPC transaccionales e idempotentes.
+- Edge Functions para sincronización, cuotas, XI, bajas y extracción segura de contexto.
+- Baseline Poisson, modelo principal Dixon–Coles + Elo, intervalos QMC de 81 escenarios y gradient boosting separado en shadow mode.
+- GitHub Actions para sincronizar cada 3 horas, revisar ventanas cada 30 minutos y entrenar a las 04:00 de Guayaquil.
+- CI sin secretos para lint, pruebas, build, contrato Python y type-check de Edge Functions.
 
-## React Compiler
+## Desarrollo
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```powershell
+Copy-Item .env.example .env.local
+npm ci
+npm run check
+python pipeline\train_model.py --self-test
+python pipeline\gradient_boosting.py
+python pipeline\backfill_history.py --self-test
+npx deno check supabase/functions/sync-football/index.ts supabase/functions/refresh-fixture/index.ts supabase/functions/extract-context/index.ts supabase/functions/review-context/index.ts supabase/functions/register-recommendation/index.ts
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Configura sólo la URL y clave pública de Supabase en `.env.local`. Nunca pongas `service_role`, PATs, claves deportivas ni contraseñas en variables `VITE_*`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Despliegue
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+No ejecutes los SQL históricos `supabase/002_manual_schema.sql` ni `supabase/003_channel_bankrolls.sql`. Aplica únicamente `supabase/migrations/` después de crear un backup y revisar `npx supabase db push --dry-run`.
 
+Antes de desplegar debes revocar todos los secretos que hayan aparecido en chat o historial, desactivar registro público, invitar al único propietario y asignarlo explícitamente mediante la RPC administrativa documentada. Las recomendaciones permanecen bloqueadas por competición hasta superar 30 días, 100 fixtures y los umbrales de cobertura.
+
+La guía completa, importación histórica offline, secretos requeridos, pruebas RLS, funciones y runbook están en [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
+## Aviso
+
+Las probabilidades son estimaciones y no garantizan beneficio. Este proyecto está diseñado para uso privado y modo papel inicial. Revisa licencias y condiciones de cada proveedor antes de publicar, mostrar logos, redistribuir datos o comercializar resultados.

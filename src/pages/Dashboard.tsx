@@ -3,6 +3,9 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Wallet, TrendingUp, TrendingDown, Activity, AlertCircle, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
+import type { ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import type { BankrollProfile, ChannelBankroll, ManualBet, MonthlyConfig } from '../lib/ledger';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -13,7 +16,16 @@ const formatCurrency = (value: number) => {
     }).format(value);
 };
 
-const StatCard = ({ title, value, subValue, trend, icon: Icon, infoText }: any) => (
+type StatCardProps = {
+    title: ReactNode;
+    value: ReactNode;
+    subValue?: ReactNode;
+    trend?: 'up' | 'down';
+    icon: LucideIcon;
+    infoText?: string;
+};
+
+const StatCard = ({ title, value, subValue, trend, icon: Icon, infoText }: StatCardProps) => (
     <div className="glass-card p-6 rounded-2xl border border-slate-700/50 relative overflow-visible group">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
         <div className="flex justify-between items-start relative z-10">
@@ -47,32 +59,32 @@ const StatCard = ({ title, value, subValue, trend, icon: Icon, infoText }: any) 
 
 export const Dashboard = () => {
     const { t } = useTranslation();
-    const [profile, setProfile] = useState<any>(null);
-    const [bets, setBets] = useState<any[]>([]);
+    const [profile, setProfile] = useState<BankrollProfile | null>(null);
+    const [bets, setBets] = useState<ManualBet[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedChannel, setSelectedChannel] = useState<string>('All');
     const [selectedMonth, setSelectedMonth] = useState<string>('All');
-    const [channelProfiles, setChannelProfiles] = useState<any[]>([]);
-    const [monthlyConfigs, setMonthlyConfigs] = useState<any[]>([]);
+    const [channelProfiles, setChannelProfiles] = useState<ChannelBankroll[]>([]);
+    const [monthlyConfigs, setMonthlyConfigs] = useState<MonthlyConfig[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 // Fetch Bankroll Profile (Global fallback)
                 const { data: bData } = await supabase.from('bankroll_profiles').select('*').limit(1).single();
-                if (bData) setProfile(bData);
+                if (bData) setProfile(bData as BankrollProfile);
 
                 // Fetch Channel Bankrolls
                 const { data: cbData } = await supabase.from('channel_bankrolls').select('*');
-                if (cbData) setChannelProfiles(cbData);
+                if (cbData) setChannelProfiles(cbData as ChannelBankroll[]);
 
                 // Fetch Bets
                 const { data: betsData } = await supabase.from('manual_bets').select('*').order('bet_date', { ascending: false });
-                if (betsData) setBets(betsData);
+                if (betsData) setBets(betsData as ManualBet[]);
 
                 // Fetch Monthly Configs
                 const { data: mcData } = await supabase.from('monthly_configs').select('*');
-                if (mcData) setMonthlyConfigs(mcData);
+                if (mcData) setMonthlyConfigs(mcData as MonthlyConfig[]);
 
             } catch (e) {
                 console.error("Error fetching data:", e);

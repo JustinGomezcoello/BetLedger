@@ -1,0 +1,26 @@
+{
+  "competition_code": "PL",
+  "home_team_id": "home",
+  "away_team_id": "away",
+  "parameters": {
+    "inference_contract_version": "football-probability-v1",
+    "competition_models": {
+      "PL": {
+        "intercept_log": 0.1823215567939546,
+        "home_advantage_log": 0.22314355131420976,
+        "elo_coefficient": 0.1,
+        "elo_home_advantage": 50.0,
+        "rho": -0.08,
+        "team_ratings": {
+          "home": { "elo": 1600.0, "attack": 0.1, "defense_weakness": 0.02 },
+          "away": { "elo": 1500.0, "attack": -0.05, "defense_weakness": 0.05 }
+        }
+      }
+    }
+  },
+  "expected": {
+    "lambda_home": 1.809345374131471,
+    "lambda_away": 1.121673264739233,
+    "rho": -0.08
+  }
+}

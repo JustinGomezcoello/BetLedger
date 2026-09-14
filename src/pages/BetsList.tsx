@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { CheckCircle2, XCircle, Clock, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { cancelManualBet, settleManualBet } from '../lib/ledger';
+import type { ManualBet } from '../lib/ledger';
 
 export const BetsList = () => {
     const { t } = useTranslation();
-    const [bets, setBets] = useState<any[]>([]);
+    const [bets, setBets] = useState<ManualBet[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'pending' | 'resolved'>('all');
 
@@ -16,7 +18,7 @@ export const BetsList = () => {
                 .select('*')
                 .order('bet_date', { ascending: false });
 
-            if (data) setBets(data);
+            if (data) setBets(data as ManualBet[]);
         } catch (error) {
             console.error(error);
         } finally {
@@ -25,57 +27,16 @@ export const BetsList = () => {
     };
 
     useEffect(() => {
-        fetchBets();
+        void fetchBets();
     }, []);
 
-    const handleResolveBet = async (bet: any, outcome: 'won' | 'lost') => {
+    const handleResolveBet = async (bet: ManualBet, outcome: 'won' | 'lost') => {
         const confirmMsg = outcome === 'won' ? t('betsList.confirmWin') : t('betsList.confirmLoss');
         if (!confirm(confirmMsg)) return;
 
         try {
-            // 1. Calculate Profit
-            let profit = 0;
-            let tipsterProfit = null;
-            if (outcome === 'won') {
-                profit = (bet.stake_amount * bet.odds) - bet.stake_amount;
-                if (bet.tipster_amount) {
-                    tipsterProfit = (bet.tipster_amount * bet.odds) - bet.tipster_amount;
-                }
-            } else {
-                profit = -bet.stake_amount;
-                if (bet.tipster_amount) {
-                    tipsterProfit = -bet.tipster_amount;
-                }
-            }
-
-            // 2. Update Bet
-            const { error: updateError } = await supabase
-                .from('manual_bets')
-                .update({ status: outcome, profit: profit, tipster_profit: tipsterProfit })
-                .eq('id', bet.id);
-
-            if (updateError) throw updateError;
-
-            // 3. Update Bankroll Profile (Global)
-            // Fetch current bankroll
-            const { data: profile } = await supabase.from('bankroll_profiles').select('id, current_bankroll').eq('id', bet.profile_id).single();
-
-            if (profile) {
-                const newBankroll = Number(profile.current_bankroll) + profit;
-                await supabase.from('bankroll_profiles').update({ current_bankroll: newBankroll }).eq('id', profile.id);
-            }
-
-            // 4. Update Channel Bankroll
-            const channelName = bet.channel || 'Personal';
-            const { data: channelProfile } = await supabase.from('channel_bankrolls').select('id, current_bankroll').eq('profile_id', bet.profile_id).eq('channel_name', channelName).single();
-
-            if (channelProfile) {
-                const newChannelBankroll = Number(channelProfile.current_bankroll) + profit;
-                await supabase.from('channel_bankrolls').update({ current_bankroll: newChannelBankroll }).eq('id', channelProfile.id);
-            }
-
-            // Refresh list
-            fetchBets();
+            await settleManualBet(bet.id, outcome);
+            await fetchBets();
 
         } catch (error) {
             console.error("Error resolving bet:", error);
@@ -83,31 +44,14 @@ export const BetsList = () => {
         }
     };
 
-    const handleDelete = async (bet: any) => {
+    const handleDelete = async (bet: ManualBet) => {
         const isResolved = bet.status !== 'pending';
         const msg = isResolved ? t('betsList.confirmDelResolved') : t('betsList.confirmDel');
         if (!confirm(msg)) return;
 
         try {
-            if (isResolved) {
-                // Revert Global Bankroll
-                const { data: profile } = await supabase.from('bankroll_profiles').select('id, current_bankroll').eq('id', bet.profile_id).single();
-                if (profile && bet.profit !== null) {
-                    const newBankroll = Number(profile.current_bankroll) - bet.profit;
-                    await supabase.from('bankroll_profiles').update({ current_bankroll: newBankroll }).eq('id', profile.id);
-                }
-
-                // Revert Channel Bankroll
-                const channelName = bet.channel || 'Personal';
-                const { data: channelProfile } = await supabase.from('channel_bankrolls').select('id, current_bankroll').eq('profile_id', bet.profile_id).eq('channel_name', channelName).single();
-                if (channelProfile && bet.profit !== null) {
-                    const newChannelBankroll = Number(channelProfile.current_bankroll) - bet.profit;
-                    await supabase.from('channel_bankrolls').update({ current_bankroll: newChannelBankroll }).eq('id', channelProfile.id);
-                }
-            }
-
-            await supabase.from('manual_bets').delete().eq('id', bet.id);
-            fetchBets();
+            await cancelManualBet(bet.id);
+            await fetchBets();
         } catch (error) {
             console.error("Error deleting bet:", error);
         }
@@ -164,7 +108,7 @@ export const BetsList = () => {
                                     <td className="p-4 font-medium text-white max-w-[150px] md:max-w-[200px] truncate" title={bet.selection}>
                                         {bet.selection}
                                     </td>
-                                    <td className="p-4 text-slate-400 text-sm max-w-[150px] md:max-w-[200px] truncate hidden lg:table-cell" title={bet.description}>
+                                    <td className="p-4 text-slate-400 text-sm max-w-[150px] md:max-w-[200px] truncate hidden lg:table-cell" title={bet.description ?? undefined}>
                                         {bet.description || '-'}
                                     </td>
                                     <td className="p-4 font-bold text-blue-400">
@@ -226,10 +170,10 @@ export const BetsList = () => {
                                                             <span className="text-red-400">-${Math.abs(bet.tipster_profit).toFixed(2)} <span className="text-[10px] text-slate-500 block">Tipster</span></span>
                                                         )
                                                     ) : (
-                                                        bet.profit >= 0 ? (
+                                                        (bet.profit ?? 0) >= 0 ? (
                                                             <span className="text-emerald-400">+${Number(bet.profit).toFixed(2)}</span>
                                                         ) : (
-                                                            <span className="text-red-400">-${Math.abs(bet.profit).toFixed(2)}</span>
+                                                            <span className="text-red-400">-${Math.abs(bet.profit ?? 0).toFixed(2)}</span>
                                                         )
                                                     )}
                                                 </span>
