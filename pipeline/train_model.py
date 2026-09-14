@@ -1618,9 +1618,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     bootstrap_samples = int(os.environ.get("BOOTSTRAP_SAMPLES", "2000"))
     sealed_season = os.environ.get("BETLEDGER_SEALED_SEASON") or None
     if len(fixtures) < min_training_matches:
-        raise RuntimeError(
-            f"Only {len(fixtures)} finished fixtures; at least {min_training_matches} are required"
+        if client and owner_id and not args.dry_run:
+            training_run_id = create_training_run(
+                client, owner_id, args.trigger_type, cutoff, status="skipped"
+            )
+            patch_training_run(
+                client,
+                training_run_id,
+                {
+                    "metrics": {
+                        "skip_reason": "insufficient_finished_fixtures",
+                        "finished_fixtures": len(fixtures),
+                        "minimum_required": min_training_matches,
+                    },
+                    "completed_at": iso_z(utc_now()),
+                },
+            )
+        print(
+            "Training skipped: "
+            f"only {len(fixtures)} finished fixtures; "
+            f"at least {min_training_matches} are required."
         )
+        return 0
     digest = dataset_digest(fixtures)
     latest_result_at = max(result_available_at(fixture) for fixture in fixtures)
 
