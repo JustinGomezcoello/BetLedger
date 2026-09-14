@@ -138,7 +138,7 @@ const AppShell = () => {
 };
 
 const App = () => (
-  <BrowserRouter>
+  <BrowserRouter basename={import.meta.env.BASE_URL}>
     <AuthProvider>
       <React.Suspense fallback={<RouteLoader />}>
         <Routes>
